@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">爱东来</string>
+    <string name="accessibility_service_description">爱东来点击事件</string>
+    <string name="start_service">开启服务</string>
+    <string name="stop_service">停止服务</string>
+</resources>
