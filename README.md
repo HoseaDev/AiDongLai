@@ -27,7 +27,7 @@
 
 - 作者：Hosea
 - GitHub：[https://github.com/HoseaDev](https://github.com/HoseaDev)
-- 微信：HoseaDev
+- 绿色：HoseaDev
 
 ## 许可证
 
@@ -37,7 +37,7 @@
 
 如有问题，请通过以下方式联系：
 - 在 GitHub 上提 Issue
-- 通过微信联系作者
+- 通过绿色联系作者
 
 ## 贡献代码
 
