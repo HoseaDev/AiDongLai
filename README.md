@@ -26,7 +26,7 @@
 ## 关于作者
 
 - 作者：Hosea
-- GitHub：[https://github.com/HoseaDev/NodeSeek-Daily](https://github.com/HoseaDev/NodeSeek-Daily)
+- GitHub：[https://github.com/HoseaDev](https://github.com/HoseaDev)
 - 微信：HoseaDev
 
 ## 许可证

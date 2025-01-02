@@ -75,7 +75,7 @@ fun MainScreen() {
                 )
                 
                 Text(text = "作者：Hosea")
-                Text(text = "GitHub：https://github.com/HoseaDev/NodeSeek-Daily")
+                Text(text = "GitHub：https://github.com/HoseaDev")
                 Text(text = "微信：HoseaDev")
                 Text(
                     text = "免责声明：本软件完全开源免费，仅供学习使用，请不要用于任何商业用途。" +
@@ -95,7 +95,7 @@ fun MainScreen() {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "使用说明",
+                    text = "使用说明：",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
