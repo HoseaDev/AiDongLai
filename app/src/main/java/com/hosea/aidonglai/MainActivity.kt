@@ -1,9 +1,9 @@
 package com.hosea.aidonglai
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
-import android.view.accessibility.AccessibilityManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -20,73 +20,37 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hosea.aidonglai.service.AutoClickService
+import com.hosea.aidonglai.service.detector.StoreActivityDetector
 import com.hosea.aidonglai.ui.theme.AiDongLaiTheme
 
 class MainActivity : ComponentActivity() {
-    private lateinit var accessibilityManager: AccessibilityManager
-    private var accessibilityCallback: AccessibilityManager.AccessibilityStateChangeListener? = null
-    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        accessibilityManager = getSystemService(ACCESSIBILITY_SERVICE) as AccessibilityManager
-        accessibilityCallback = AccessibilityManager.AccessibilityStateChangeListener { 
-            updateAccessibilityState()
-        }
-        accessibilityManager.addAccessibilityStateChangeListener(accessibilityCallback!!)
-        
         setContent {
             AiDongLaiTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainScreen(AutoClickService.isServiceEnabled(this))
+                    MainScreen()
                 }
             }
-        }
-    }
-    
-    private fun updateAccessibilityState() {
-        setContent {
-            AiDongLaiTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    MainScreen(AutoClickService.isServiceEnabled(this))
-                }
-            }
-        }
-    }
-    
-    override fun onDestroy() {
-        super.onDestroy()
-        accessibilityCallback?.let {
-            accessibilityManager.removeAccessibilityStateChangeListener(it)
         }
     }
 }
 
 @Composable
-fun MainScreen(initialAccessibilityState: Boolean) {
-    val context = LocalContext.current
+fun MainScreen() {
     var isAccessibilityEnabled by remember { 
-        mutableStateOf(initialAccessibilityState)
+        mutableStateOf(false)
     }
+    var searchText by remember { 
+        mutableStateOf(StoreActivityDetector.targetText)
+    }
+    val context = LocalContext.current
     
-    // 监听无障碍服务状态变化
-    DisposableEffect(Unit) {
-        val accessibilityManager = context.getSystemService(ComponentActivity.ACCESSIBILITY_SERVICE) as AccessibilityManager
-        val callback = AccessibilityManager.AccessibilityStateChangeListener { 
-            isAccessibilityEnabled = AutoClickService.isServiceEnabled(context)
-        }
-        
-        accessibilityManager.addAccessibilityStateChangeListener(callback)
-        
-        onDispose {
-            accessibilityManager.removeAccessibilityStateChangeListener(callback)
-        }
+    LaunchedEffect(Unit) {
+        isAccessibilityEnabled = AutoClickService.isServiceEnabled(context)
     }
 
     Column(
@@ -95,6 +59,56 @@ fun MainScreen(initialAccessibilityState: Boolean) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // 软件简介卡片
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "软件简介",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Text(text = "作者：Hosea")
+                Text(text = "GitHub：https://github.com/HoseaDev/NodeSeek-Daily")
+                Text(text = "微信：HoseaDev")
+                Text(
+                    text = "免责声明：本软件完全开源免费，仅供学习使用，请不要用于任何商业用途。" +
+                    "使用本软件所产生的任何法律责任由使用者自行承担。",
+                    color = Color.Red
+                )
+            }
+        }
+
+        // 使用说明卡片
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "使用说明",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Text(text = "1. 打开无障碍权限，出现黑框表示开启成功")
+                Text(text = "2. 进入某音 -> 我 -> 商城 -> 搜索")
+                Text(text = "3. 输入（只卖真货的店名）")
+                Text(text = "4. 切换到店铺栏")
+                Text(text = "5. 进入店铺即可完成")
+                Text(text = "6. 本软件设定只能抢{油}，且商家限定每人只能抢一次，所以你也只能抢一次。")
+            }
+        }
+
         // 无障碍服务状态卡片
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -115,55 +129,15 @@ fun MainScreen(initialAccessibilityState: Boolean) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (isAccessibilityEnabled) 
-                                Icons.Default.CheckCircle 
-                            else 
-                                Icons.Default.Close,
-                            contentDescription = "状态",
-                            tint = if (isAccessibilityEnabled) Color.Green else Color.Red
-                        )
-                        Text(
-                            text = if (isAccessibilityEnabled) "已开启" else "未开启",
-                            color = if (isAccessibilityEnabled) Color.Green else Color.Red
-                        )
-                    }
-                    
                     Button(
                         onClick = {
                             val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
                             context.startActivity(intent)
-                        },
-                        enabled = !isAccessibilityEnabled
+                        }
                     ) {
                         Text(text = if (isAccessibilityEnabled) "已开启" else "去开启")
                     }
                 }
-            }
-        }
-
-        // 关于信息卡片
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "关于",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Text(text = "开发者：Hosea")
-                Text(text = "本软件完全免费开源")
-                Text(text = "GitHub: https://github.com/hosea")
             }
         }
     }

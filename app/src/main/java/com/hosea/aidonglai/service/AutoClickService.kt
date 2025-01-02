@@ -20,25 +20,38 @@ import com.hosea.aidonglai.service.detector.ProductActivityDetector
 import com.hosea.aidonglai.service.detector.SearchActivityDetector
 import com.hosea.aidonglai.service.detector.StoreActivityDetector
 import com.hosea.aidonglai.service.FloatingWindowManager
+import com.hosea.aidonglai.service.detector.OrderDetector
 
 class AutoClickService : AccessibilityService() {
     private val detectors = listOf<IWindowDetector>(
         SearchActivityDetector(),
-        StoreActivityDetector(),
-        ProductActivityDetector()
+        StoreActivityDetector().also {
+            it.service = this
+        },
+        ProductActivityDetector(),
+        OrderDetector().also {
+            it.service = this
+        }
     ).also {
-        Log.i("AutoClickService", "Initialized detectors: ${it.map { detector -> detector.javaClass.simpleName }}")
+        Log.i(
+            "AutoClickService",
+            "Initialized detectors: ${it.map { detector -> detector.javaClass.simpleName }}"
+        )
     }
 
     companion object {
         private const val TAG = "AutoClickService"
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "AutoClickService"
+        var instance: AutoClickService? = null
+            private set
 
         fun isServiceEnabled(context: Context): Boolean {
-            val accessibilityManager = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
-            val enabledServices = accessibilityManager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
-            return enabledServices.any { it.id.contains(context.packageName) }
+            val accessibilityManager =
+                context.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
+            val accessibilityServices = accessibilityManager
+                .getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_GENERIC)
+            return accessibilityServices.any { it.id.contains(context.packageName) }
         }
     }
 
@@ -46,6 +59,7 @@ class AutoClickService : AccessibilityService() {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         Log.i(TAG, "Service created")
         floatingWindowManager = FloatingWindowManager(this)
         startForeground()
@@ -60,7 +74,7 @@ class AutoClickService : AccessibilityService() {
             ).apply {
                 description = "Keep service running"
             }
-            
+
             val notificationManager = getSystemService(NotificationManager::class.java)
             notificationManager.createNotificationChannel(channel)
         }
@@ -81,7 +95,11 @@ class AutoClickService : AccessibilityService() {
             .build()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            startForeground(
+                NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+            )
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }
@@ -95,12 +113,12 @@ class AutoClickService : AccessibilityService() {
                 info?.apply {
                     // 监听所有事件类型
                     eventTypes = AccessibilityEvent.TYPES_ALL_MASK
-                    
+
                     flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
                             AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or
                             AccessibilityServiceInfo.FLAG_REQUEST_ENHANCED_WEB_ACCESSIBILITY or
                             AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
-                            
+
                     notificationTimeout = 100
                 }
                 Log.d(TAG, "Service info - eventTypes: ${info?.eventTypes}, flags: ${info?.flags}")
@@ -116,7 +134,7 @@ class AutoClickService : AccessibilityService() {
         val packageName = event.packageName?.toString() ?: "unknown"
         val className = event.className?.toString() ?: "unknown"
         val eventTime = System.currentTimeMillis()
-        
+
         // 记录所有事件类型
         val eventTypeStr = when (event.eventType) {
             AccessibilityEvent.TYPE_VIEW_CLICKED -> "TYPE_VIEW_CLICKED"
@@ -128,61 +146,61 @@ class AutoClickService : AccessibilityService() {
             AccessibilityEvent.TYPE_WINDOWS_CHANGED -> "TYPE_WINDOWS_CHANGED"
             else -> "TYPE_UNKNOWN(${event.eventType})"
         }
-        
-        Log.d(TAG, "Raw event received - type: $eventTypeStr, class: $className, package: $packageName, time: $eventTime")
-        
+
+        Log.d(
+            TAG,
+            "Raw event received - type: $eventTypeStr, class: $className, package: $packageName, time: $eventTime"
+        )
+
         // 只处理我们感兴趣的包
         if (packageName == "unknown" || packageName == "android" || packageName == "com.android.systemui") {
             return
         }
-        
+
+        // 只在窗口状态改变或内容加载完成时处理
+        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && 
+            event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+            return
+        }
+
         val rootNode = try {
             rootInActiveWindow
         } catch (e: Exception) {
             Log.e(TAG, "Error getting root node", e)
             null
         }
-        
+
         if (rootNode == null) {
             Log.e(TAG, "Root node is null for package: $packageName")
             return
         }
-        
+
         try {
             // 对所有事件都尝试使用检测器
             detectors.find { it.matchWindow(event) }?.let { detector ->
-                Log.i(TAG, "Matched detector: ${detector.javaClass.simpleName} for package: $packageName")
+                Log.i(
+                    TAG,
+                    "Matched detector: ${detector.javaClass.simpleName} for package: $packageName"
+                )
                 try {
                     detector.handleEvent(rootNode, event)
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error handling event with detector: ${detector.javaClass.simpleName}", e)
+                    Log.e(
+                        TAG,
+                        "Error handling event with detector: ${detector.javaClass.simpleName}",
+                        e
+                    )
                 }
             }
-            
-            // 特殊处理点击事件
-            if (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) {
-                val clickedNode = event.source
-                if (clickedNode != null) {
-                    Log.d(TAG, "Clicked node: ${clickedNode.className}, ${clickedNode.text}")
-                    clickedNode.recycle()
-                }
-            }
-            
+
             event.packageName?.toString()?.let { packageName ->
                 val activityName = event.className?.toString() ?: ""
                 if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
                     floatingWindowManager.updateInfo(packageName, activityName)
                 }
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error processing event", e)
         } finally {
-            try {
-                rootNode.recycle()
-                Log.v(TAG, "Recycled root node for package: $packageName")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error recycling root node", e)
-            }
+            rootNode.recycle()
         }
     }
 
@@ -192,6 +210,7 @@ class AutoClickService : AccessibilityService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        instance = null
         floatingWindowManager.hide()
         Log.i(TAG, "Service destroyed")
     }

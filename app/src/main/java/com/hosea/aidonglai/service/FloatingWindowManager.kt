@@ -56,8 +56,22 @@ class FloatingWindowManager(private val context: Context) {
 
     fun updateInfo(packageName: String, activityName: String) {
         floatingView?.let {
-            it.findViewById<TextView>(R.id.tvPackageName).text = "包名: $packageName"
-            it.findViewById<TextView>(R.id.tvActivityName).text = "界面: $activityName"
+            when {
+                activityName.contains("ECSearchActivity") -> updateMessage("开始相爱")
+                activityName.contains("StoreActivity") -> updateMessage("正在寻找爱")
+                activityName.contains("ProductActivity") -> updateMessage("爱来了")
+                else -> {
+                    it.findViewById<TextView>(R.id.tvPackageName).text = "包名: $packageName"
+                    it.findViewById<TextView>(R.id.tvActivityName).text = "界面: $activityName"
+                }
+            }
+        }
+    }
+
+    private fun updateMessage(message: String) {
+        floatingView?.let {
+            it.findViewById<TextView>(R.id.tvPackageName).text = message
+            it.findViewById<TextView>(R.id.tvActivityName).text = ""
         }
     }
 
